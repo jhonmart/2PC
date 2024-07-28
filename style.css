@@ -1,0 +1,94 @@
+body {
+  background: #F7F7F7;
+  margin: 0;
+}
+
+#chat {
+  background: white;
+}
+
+header {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+
+  flex-basis: 3.5rem;
+  flex-shrink: 0;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.circle-user {
+  width: 4rem;
+  height: 4rem;
+  background-size: cover;
+  background-position: center;
+  border-radius: 50%;
+  background-color: #333;
+
+  color: #FFF;
+  font-size: 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.user-group {
+  display: flex;
+  font-size: 1.3rem;
+  flex-direction: column;
+}
+
+.messages {
+  padding: 1rem;
+  background: #F7F7F7;
+  flex-shrink: 2;
+  overflow-y: auto;
+  height: calc(100vh - 11.5rem);
+  box-shadow: inset 0 2rem 2rem -2rem rgba(0, 0, 0, 0.05), inset 0 -2rem 2rem -2rem rgba(0, 0, 0, 0.05);
+}
+
+.message {
+  border-radius: 1.125rem 1.125rem 1.125rem 0;
+  width: -webkit-fit-content;
+  width: -moz-fit-content;
+  width: fit-content;
+  max-width: 66%;
+  box-shadow: 0 0 2rem rgba(0, 0, 0, 0.075), 0rem 1rem 1rem -1rem rgba(0, 0, 0, 0.1);
+  padding: 0.5rem 1rem;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.message.me {
+  margin: 1rem 1rem 1rem auto;
+  border-radius: 1.125rem 1.125rem 0 1.125rem;
+  background: #333;
+  color: white;
+}
+
+.message.other-user {
+  box-sizing: border-box;
+  margin: 1rem;
+  color: #333;
+  background: #FFF;
+}
+
+#formMessage {
+  padding: 0.5rem;
+  display: flex;
+}
+
+.message-input {
+  border: none;
+  background-image: none;
+  background-color: white;
+  height: 1.5rem;
+  padding: 0.5rem 1rem;
+  margin-right: 1rem;
+  border-radius: 1.125rem;
+  flex-grow: 2;
+  box-shadow: 0 0 1rem rgba(0, 0, 0, 0.1), 0rem 1rem 1rem -1rem rgba(0, 0, 0, 0.2);
+  font-family: Red hat Display, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.025em;
+}
