@@ -3,6 +3,7 @@ const publicKeyText = forge.pki.publicKeyToPem(keys.publicKey);
 const params = new URLSearchParams(location.search);
 const peerInstance = new Peer();
 const connections = [];
+let passphrase;
 
 function updateCert(peer, publicKey) {
   console.log("Atualizando certificado")
@@ -22,6 +23,29 @@ function decodeBase64Unicode(base64) {
   return decodedString;
 }
 
+function encryptWithAES(text) {
+  const key = forge.pkcs5.pbkdf2(passphrase, 'salt', 1000, 16);
+  const cipher = forge.cipher.createCipher('AES-CBC', key);
+  const iv = forge.random.getBytesSync(16);
+  cipher.start({iv: iv});
+  cipher.update(forge.util.createBuffer(text));
+  cipher.finish();
+  const encrypted = iv + cipher.output.getBytes();
+  return forge.util.encode64(encrypted);
+}
+
+function decryptWithAES(encryptedText) {
+  const key = forge.pkcs5.pbkdf2(passphrase, 'salt', 1000, 16);
+  const encryptedBytes = forge.util.decode64(encryptedText);
+  const iv = encryptedBytes.slice(0, 16);
+  const encrypted = encryptedBytes.slice(16);
+  const decipher = forge.cipher.createDecipher('AES-CBC', key);
+  decipher.start({iv: iv});
+  decipher.update(forge.util.createBuffer(encrypted));
+  decipher.finish();
+  return decipher.output.toString();
+}
+
 function drawUserMessage(message, me=false) {
   const div = document.createElement("div");
   div.innerHTML = message;
@@ -34,6 +58,7 @@ function drawUserMessage(message, me=false) {
 document.addEventListener("DOMContentLoaded", ev => {
   peerInstance.on("open", function(uuid) {
     alert(`Seu link de acesso é: ${location.href}?user=${uuid}`);
+    passphrase = prompt("Digite sua frase secreta: ");
 
     if (params.get("user")) {
       const connWithOtherUser = peerInstance.connect(params.get("user"));
@@ -41,7 +66,7 @@ document.addEventListener("DOMContentLoaded", ev => {
       setTimeout(() => {
         connWithOtherUser.send({
           message: "Conectado",
-          publicKeyText: publicKeyText
+          publicKeyText: encryptWithAES(publicKeyText)
         });
       }, 1e3);
     }
@@ -54,7 +79,8 @@ document.addEventListener("DOMContentLoaded", ev => {
   peerInstance.on("connection", function (conn) {
     conn.on("data", function (data) {
       if (data.publicKeyText) {
-        updateCert(conn.peer, forge.pki.publicKeyFromPem(data.publicKeyText));
+        const decryptCert = decryptWithAES(data.publicKeyText)
+        updateCert(conn.peer, forge.pki.publicKeyFromPem(decryptCert));
       } else if (data.message) {
         if (!data.publicKeyText) {
           const messageDecrypt = keys.privateKey.decrypt(data.message);
@@ -73,7 +99,7 @@ document.addEventListener("DOMContentLoaded", ev => {
         setTimeout(() => {
           connWithOtherUser.send({
             message: "Conectado",
-            publicKeyText: publicKeyText
+            publicKeyText: encryptWithAES(publicKeyText)
           });
         }, 1e3);
       }
