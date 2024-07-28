@@ -9,6 +9,19 @@ function updateCert(peer, publicKey) {
   connections[peer].crypt = publicKey;
 }
 
+function encodeBase64Unicode(str) {
+  const utf8Bytes = new TextEncoder().encode(str);
+  const base64String = btoa(String.fromCharCode(...utf8Bytes));
+  return base64String;
+}
+
+function decodeBase64Unicode(base64) {
+  const binaryString = atob(base64);
+  const utf8Bytes = Uint8Array.from(binaryString, char => char.charCodeAt(0));
+  const decodedString = new TextDecoder().decode(utf8Bytes);
+  return decodedString;
+}
+
 function drawUserMessage(message, me=false) {
   const div = document.createElement("div");
   div.innerHTML = message;
@@ -20,7 +33,7 @@ function drawUserMessage(message, me=false) {
 
 document.addEventListener("DOMContentLoaded", ev => {
   peerInstance.on("open", function(uuid) {
-    alert(`Seu link de acesso é: ${location.origin}?user=${uuid}`);
+    alert(`Seu link de acesso é: ${location.href}?user=${uuid}`);
 
     if (params.get("user")) {
       const connWithOtherUser = peerInstance.connect(params.get("user"));
@@ -43,10 +56,10 @@ document.addEventListener("DOMContentLoaded", ev => {
       if (data.publicKeyText) {
         updateCert(conn.peer, forge.pki.publicKeyFromPem(data.publicKeyText));
       } else if (data.message) {
-        console.log("Mensagem recebida", data.message);
         if (!data.publicKeyText) {
           const messageDecrypt = keys.privateKey.decrypt(data.message);
-          drawUserMessage(messageDecrypt, false);
+          const decodedString = decodeBase64Unicode(messageDecrypt)
+          drawUserMessage(decodedString, false);
         }
       }
     });
@@ -86,7 +99,9 @@ formMessage.onsubmit = function(ev) {
   ev.preventDefault();
   ev.stopPropagation();
 
-  sendMessage(message.value);
+  const encondeText = encodeBase64Unicode(message.value);
+
+  sendMessage(encondeText);
   drawUserMessage(message.value, true);
 
   message.value = "";
