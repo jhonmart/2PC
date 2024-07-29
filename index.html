@@ -9,23 +9,35 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/forge/1.3.1/forge.min.js" integrity="sha512-95iy0RZIbw3H/FgfAj2wnCQJlzFQ+eaSfUeV/l8WVyGHKSRMzm3M/O+85j9ba/HFphkijrCTDjcuDX0BL2lthA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
-  <!-- <h1>
-    Meu link: <code id="myLink"></code>
-  </h1> -->
+  <div id="loading">
+    <span class="loader"></span>
+    <span id="statusLoad">Aguardando...</span>
+  </div>
 
   <section id="chat">
     <header>
-      <div class="circle-user">J</div>
-      <div class="user-group">
-        <span id="userName">Usuário X</span>
-        <span>Hoje às 12:31</span>
+      <div class="user-container">
+        <div class="circle-user">J</div>
+        <div class="user-group">
+          <span id="userName">Usuário X</span>
+          <span>Hoje às 12:31</span>
+        </div>
+      </div>
+      <div>
+        <button class="myLink" onclick="copyLink()">Copiar meu link</button>
       </div>
     </header>
 
     <main class="messages" id="chatMessage"></main>
 
     <form id="formMessage">
-      <input id="message" class="message-input" placeholder="Digite sua mensagem aqui!" type="text" />
+      <input
+        id="message"
+        maxlength="150"
+        class="message-input"
+        placeholder="Digite sua mensagem aqui!"
+        type="text"
+      />
     </form>
   </section>
 

@@ -3,7 +3,15 @@ const publicKeyText = forge.pki.publicKeyToPem(keys.publicKey);
 const params = new URLSearchParams(location.search);
 const peerInstance = new Peer();
 const connections = [];
+let myUUID;
 let passphrase;
+
+function copyLink() {
+  document.body.focus();
+  navigator.clipboard.writeText(
+    `${location.origin}${location.pathname}?user=${myUUID}`
+  );
+}
 
 function updateCert(peer, publicKey) {
   console.log("Atualizando certificado")
@@ -52,14 +60,20 @@ function drawUserMessage(message, me=false) {
   div.className = `message ${me ? "me" : "other-user"}`;
 
   chatMessage.appendChild(div);
-  // add scroll after
+  chatMessage.scrollTop = chatMessage.scrollHeight;
 }
-
-document.addEventListener("DOMContentLoaded", ev => {
+statusLoad.innerHTML = `Gerando UUID...`;
+document.addEventListener("DOMContentLoaded", () => {
   peerInstance.on("open", function(uuid) {
-    alert(`Seu link de acesso é: ${location.href}?user=${uuid}`);
+    statusLoad.innerHTML = `Gerando link...`;
+    myUUID = uuid;
+    statusLoad.innerHTML = `Esperando frase-senha...`;
     passphrase = prompt("Digite sua frase secreta: ");
-
+    if (!params.get("user")) copyLink();
+    statusLoad.innerHTML = `Link Copiado`;
+    statusLoad.innerHTML = params.get("user")
+      ? "Se conectando..."
+      : `<button class="myLink" onclick="copyLink()">Copiar meu link</button> Esparando segundo usuário...`;
     if (params.get("user")) {
       const connWithOtherUser = peerInstance.connect(params.get("user"));
       connections[params.get("user")] = { peerConn: connWithOtherUser };
@@ -79,12 +93,15 @@ document.addEventListener("DOMContentLoaded", ev => {
   peerInstance.on("connection", function (conn) {
     conn.on("data", function (data) {
       if (data.publicKeyText) {
-        const decryptCert = decryptWithAES(data.publicKeyText)
+        statusLoad.innerHTML = `Lendo o certificado...`;
+        const decryptCert = decryptWithAES(data.publicKeyText);
         updateCert(conn.peer, forge.pki.publicKeyFromPem(decryptCert));
+        statusLoad.innerHTML = `Abrindo o chat...`;
+        loading.style.display = "none";
       } else if (data.message) {
         if (!data.publicKeyText) {
           const messageDecrypt = keys.privateKey.decrypt(data.message);
-          const decodedString = decodeBase64Unicode(messageDecrypt)
+          const decodedString = decodeBase64Unicode(messageDecrypt);
           drawUserMessage(decodedString, false);
         }
       }
