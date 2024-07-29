@@ -108,7 +108,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   peerInstance.on("close", function () {
-    alert(`Sua conexão caiu`);
+    statusLoad.innerHTML = `Sua conexão caiu...`;
+    loading.style.display = "flex";
   });
 
   peerInstance.on("connection", function (conn) {
@@ -158,6 +159,8 @@ document.addEventListener("DOMContentLoaded", () => {
     conn.on("close", function() {
       delete connections[conn.peer];
       console.log("Conexão fechada: ", conn.peer);
+      statusLoad.innerHTML = `Conexão fechada...<br>Esparando segundo usuário...`;
+      loading.style.display = "flex";
     });
   });
 });
