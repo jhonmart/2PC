@@ -100,6 +100,8 @@ document.addEventListener("DOMContentLoaded", () => {
         loading.style.display = "none";
       } else if (data.message) {
         if (!data.publicKeyText) {
+          statusLoad.innerHTML = `Abrindo o chat...`;
+          loading.style.display = "none";
           const messageDecrypt = keys.privateKey.decrypt(data.message);
           const decodedString = decodeBase64Unicode(messageDecrypt);
           drawUserMessage(decodedString, false);
@@ -148,4 +150,9 @@ formMessage.onsubmit = function(ev) {
   drawUserMessage(message.value, true);
 
   message.value = "";
+}
+
+window.onerror = (ev) => {
+  statusLoad.innerHTML = "Falha na leitura do certificado...";
+  alert(String(ev))
 }
