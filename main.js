@@ -6,6 +6,27 @@ const connections = [];
 let myUUID;
 let passphrase;
 
+function p2pFetch(peerId, request, timeout = 1000) {
+  return new Promise((resolve, reject) => {
+    const requestId = performance.now();
+
+    const checkResponse = ev => {
+      const responseFetch = ev.detail;
+      if (responseFetch.requestId === requestId) {
+        document.removeEventListener('p2pResponse', checkResponse);
+        resolve(ev.detail.response);
+      }
+    };
+
+    document.addEventListener('p2pResponse', checkResponse);
+    connections[peerId].peerConn.send({ request, requestId });
+
+    setTimeout(() => {
+      reject(new Error("Tempo limite excedido"));
+    }, timeout);
+  });
+}
+
 function copyLink() {
   document.body.focus();
   navigator.clipboard.writeText(
@@ -32,8 +53,8 @@ function decodeBase64Unicode(base64) {
 }
 
 function encryptWithAES(text) {
-  const key = forge.pkcs5.pbkdf2(passphrase, 'salt', 1000, 16);
-  const cipher = forge.cipher.createCipher('AES-CBC', key);
+  const key = forge.pkcs5.pbkdf2(passphrase, "salt", 1000, 16);
+  const cipher = forge.cipher.createCipher("AES-CBC", key);
   const iv = forge.random.getBytesSync(16);
   cipher.start({iv: iv});
   cipher.update(forge.util.createBuffer(text));
@@ -43,11 +64,11 @@ function encryptWithAES(text) {
 }
 
 function decryptWithAES(encryptedText) {
-  const key = forge.pkcs5.pbkdf2(passphrase, 'salt', 1000, 16);
+  const key = forge.pkcs5.pbkdf2(passphrase, "salt", 1000, 16);
   const encryptedBytes = forge.util.decode64(encryptedText);
   const iv = encryptedBytes.slice(0, 16);
   const encrypted = encryptedBytes.slice(16);
-  const decipher = forge.cipher.createDecipher('AES-CBC', key);
+  const decipher = forge.cipher.createDecipher("AES-CBC", key);
   decipher.start({iv: iv});
   decipher.update(forge.util.createBuffer(encrypted));
   decipher.finish();
@@ -62,6 +83,7 @@ function drawUserMessage(message, me=false) {
   chatMessage.appendChild(div);
   chatMessage.scrollTop = chatMessage.scrollHeight;
 }
+
 statusLoad.innerHTML = `Gerando UUID...`;
 document.addEventListener("DOMContentLoaded", () => {
   peerInstance.on("open", function(uuid) {
@@ -69,7 +91,6 @@ document.addEventListener("DOMContentLoaded", () => {
     myUUID = uuid;
     statusLoad.innerHTML = `Esperando frase-senha...`;
     passphrase = prompt("Digite sua frase secreta: ");
-    if (!params.get("user")) copyLink();
     statusLoad.innerHTML = `Link Copiado`;
     statusLoad.innerHTML = params.get("user")
       ? "Se conectando..."
@@ -91,24 +112,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   peerInstance.on("connection", function (conn) {
-    conn.on("data", function (data) {
-      if (data.publicKeyText) {
-        statusLoad.innerHTML = `Lendo o certificado...`;
-        const decryptCert = decryptWithAES(data.publicKeyText);
-        updateCert(conn.peer, forge.pki.publicKeyFromPem(decryptCert));
-        statusLoad.innerHTML = `Abrindo o chat...`;
-        loading.style.display = "none";
-      } else if (data.message) {
-        if (!data.publicKeyText) {
-          statusLoad.innerHTML = `Abrindo o chat...`;
-          loading.style.display = "none";
-          const messageDecrypt = keys.privateKey.decrypt(data.message);
-          const decodedString = decodeBase64Unicode(messageDecrypt);
-          drawUserMessage(decodedString, false);
-        }
-      }
-    });
-
     conn.on("open", function() {
       console.log("Conectado a: ", conn);
       if (!connections[conn.peer]) {
@@ -122,6 +125,34 @@ document.addEventListener("DOMContentLoaded", () => {
           });
         }, 1e3);
       }
+
+      conn.on("data", function (data) {
+        document.dispatchEvent(new CustomEvent('p2pResponse', {
+          detail: data
+        }));
+        if (data.request) {
+          const userConn = connections[conn.peer].peerConn;
+          if (data.request === "needCertificate") 
+            userConn.send({
+              response: encryptWithAES(publicKeyText),
+              requestId: data.requestId
+            });
+        } else if (data.publicKeyText) {
+          statusLoad.innerHTML = `Lendo o certificado...`;
+          const decryptCert = decryptWithAES(data.publicKeyText);
+          updateCert(conn.peer, forge.pki.publicKeyFromPem(decryptCert));
+          statusLoad.innerHTML = `Abrindo o chat...`;
+          loading.style.display = "none";
+        } else if (data.message) {
+          if (!data.publicKeyText) {
+            statusLoad.innerHTML = `Abrindo o chat...`;
+            loading.style.display = "none";
+            const messageDecrypt = keys.privateKey.decrypt(data.message);
+            const decodedString = decodeBase64Unicode(messageDecrypt);
+            drawUserMessage(decodedString, false);
+          }
+        }
+      });
     });
 
     conn.on("close", function() {
@@ -132,7 +163,11 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function sendMessage(messageData) {
-  Object.values(connections).forEach(conn => {
+  Object.values(connections).forEach(async conn => {
+    if (!conn.crypt) { // Get certificate
+      await p2pFetch(conn.peer, "needCertificate");
+      conn.crypt = connections[conn.peer].crypt;
+    }
     const messageDataCrypt = conn.crypt.encrypt(messageData);
     conn.peerConn.send({
       message: messageDataCrypt
