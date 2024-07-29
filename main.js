@@ -168,8 +168,11 @@ document.addEventListener("DOMContentLoaded", () => {
 function sendMessage(messageData) {
   Object.values(connections).forEach(async conn => {
     if (!conn.crypt) { // Get certificate
-      await p2pFetch(conn.peer, "needCertificate");
-      conn.crypt = connections[conn.peer].crypt;
+      const publicKeyText = await p2pFetch(conn.peer, "needCertificate");
+      statusLoad.innerHTML = `Lendo o certificado...`;
+      const decryptCert = decryptWithAES(publicKeyText);
+      conn.crypt = forge.pki.publicKeyFromPem(decryptCert);
+      updateCert(conn.peer, conn.crypt);
     }
     const messageDataCrypt = conn.crypt.encrypt(messageData);
     conn.peerConn.send({
